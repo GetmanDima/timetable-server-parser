@@ -16,6 +16,8 @@ class MtuciController {
 
       if (data[1][0] && data[1][0].toLowerCase() === "пн") {
         res.json(parser2.run(wb, group));
+      } else if (data[3][0] && data[3][0].toLowerCase() === "пн") {
+        res.json(parser2.run(wb, group, 2));
       } else {
         res.json(parser1.run(wb, group));
       }

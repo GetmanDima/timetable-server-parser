@@ -1,14 +1,14 @@
 const XLSX = require("xlsx");
 const translateGroupString = require("./common").translateGroupString;
 
-const getColumnNumber = (data) => {
+const getColumnCount = (data) => {
   return data.reduce((max, row) => (row.length > max ? row.length : max), 0);
 };
 
 const getGroupColumn = (group, data) => {
-  const columnNumber = getColumnNumber(data);
+  const columnCount = getColumnCount(data);
 
-  for (let i = 0; i <= columnNumber; i++) {
+  for (let i = 0; i <= columnCount; i++) {
     const groupString = data[0][i];
 
     if (groupString) {
@@ -23,10 +23,10 @@ const getGroupColumn = (group, data) => {
   return -1;
 };
 
-const getTimes = (timeColumn, data) => {
+const getTimes = (timeColumn, data, offset = 0) => {
   const times = [];
 
-  for (let i = 0; i < 9; i++) {
+  for (let i = offset + 1; i < 10 + offset; i++) {
     if (i % 2 !== 0) {
       const time = data[i][timeColumn].split("-");
       const timeFrom = time[0];
@@ -122,7 +122,7 @@ const getWeekDay = (groupColumn, startRow, endRow, data) => {
   return day;
 };
 
-module.exports.run = (wb, group) => {
+module.exports.run = (wb, group, offset = 0) => {
   let data = [];
   let groupColumn = -1;
 
@@ -135,22 +135,44 @@ module.exports.run = (wb, group) => {
     groupColumn = getGroupColumn(group, data);
 
     if (groupColumn !== -1) {
-      console.log("group not found");
-      return {};
+      break;
     }
   }
 
-  if (groupColumn !== -1) {
-    const timetable = {};
-
-    timetable["times"] = getTimes(2, data);
-    timetable["monday"] = getWeekDay(groupColumn, 1, 10, data);
-    timetable["tuesday"] = getWeekDay(groupColumn, 12, 21, data);
-    timetable["wednesday"] = getWeekDay(groupColumn, 23, 32, data);
-    timetable["thursday"] = getWeekDay(groupColumn, 34, 43, data);
-    timetable["friday"] = getWeekDay(groupColumn, 45, 54, data);
-    timetable["saturday"] = getWeekDay(groupColumn, 56, 65, data);
-
-    return timetable;
+  if (groupColumn === -1) {
+    console.log("group not found");
+    return {};
   }
+
+  const timetable = {};
+
+  timetable["times"] = getTimes(2, data, offset);
+  timetable["monday"] = getWeekDay(groupColumn, 1 + offset, 10 + offset, data);
+  timetable["tuesday"] = getWeekDay(
+    groupColumn,
+    12 + offset,
+    21 + offset,
+    data
+  );
+  timetable["wednesday"] = getWeekDay(
+    groupColumn,
+    23 + offset,
+    32 + offset,
+    data
+  );
+  timetable["thursday"] = getWeekDay(
+    groupColumn,
+    34 + offset,
+    43 + offset,
+    data
+  );
+  timetable["friday"] = getWeekDay(groupColumn, 45 + offset, 54 + offset, data);
+  timetable["saturday"] = getWeekDay(
+    groupColumn,
+    56 + offset,
+    65 + offset,
+    data
+  );
+
+  return timetable;
 };

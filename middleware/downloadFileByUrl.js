@@ -22,7 +22,10 @@ module.exports = async (req, res, next) => {
         });
       })
       .on("error", function (err) {
-        fs.unlink(dest);
+        console.log(err);
+        fs.unlink(dest, (e) => {
+          console.log(e);
+        });
         res.sendStatus(500);
       });
   } catch (_) {
