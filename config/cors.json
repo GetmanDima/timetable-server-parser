@@ -1,0 +1,8 @@
+{
+  "development": {
+    "allowList": ["*"]
+  },
+  "production": {
+    "allowList": ["*"]
+  }
+}
