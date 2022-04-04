@@ -23,19 +23,20 @@ const getGroupColumn = (group, data) => {
   return -1;
 };
 
-const getTimes = (timeColumn, data, offset = 0) => {
-  const times = [];
+const getClassTimes = (timeColumn, data, offset = 0) => {
+  const classTimes = [];
 
   for (let i = offset + 1; i < 10 + offset; i++) {
     if (i % 2 !== 0) {
+      const number = data[i][timeColumn - 1];
       const time = data[i][timeColumn].split("-");
-      const timeFrom = time[0];
-      const timeTo = time[1];
-      times.push({ timeFrom, timeTo });
+      const startTime = time[0];
+      const endTime = time[1];
+      classTimes.push({ number, startTime, endTime });
     }
   }
 
-  return times;
+  return classTimes;
 };
 
 const removeUnnecessaryChars = (str) => {
@@ -90,8 +91,8 @@ const getAud = (str) => {
 
 const getWeekDay = (groupColumn, startRow, endRow, data) => {
   const day = {
-    topWeek: [],
-    lowWeek: [],
+    high: [],
+    low: [],
   };
 
   for (let i = startRow; i <= endRow; i++) {
@@ -113,9 +114,9 @@ const getWeekDay = (groupColumn, startRow, endRow, data) => {
     }
 
     if (i % 2 === startRow % 2) {
-      day["topWeek"].push(classTime);
+      day["high"].push(classTime);
     } else {
-      day["lowWeek"].push(classTime);
+      day["low"].push(classTime);
     }
   }
 
@@ -146,33 +147,32 @@ module.exports.run = (wb, group, offset = 0) => {
 
   const timetable = {};
 
-  timetable["times"] = getTimes(2, data, offset);
-  timetable["monday"] = getWeekDay(groupColumn, 1 + offset, 10 + offset, data);
-  timetable["tuesday"] = getWeekDay(
-    groupColumn,
-    12 + offset,
-    21 + offset,
-    data
-  );
-  timetable["wednesday"] = getWeekDay(
+  timetable["classTimes"] = getClassTimes(2, data, offset);
+
+  const weekDays = {};
+  weekDays["monday"] = getWeekDay(groupColumn, 1 + offset, 10 + offset, data);
+  weekDays["tuesday"] = getWeekDay(groupColumn, 12 + offset, 21 + offset, data);
+  weekDays["wednesday"] = getWeekDay(
     groupColumn,
     23 + offset,
     32 + offset,
     data
   );
-  timetable["thursday"] = getWeekDay(
+  weekDays["thursday"] = getWeekDay(
     groupColumn,
     34 + offset,
     43 + offset,
     data
   );
-  timetable["friday"] = getWeekDay(groupColumn, 45 + offset, 54 + offset, data);
-  timetable["saturday"] = getWeekDay(
+  weekDays["friday"] = getWeekDay(groupColumn, 45 + offset, 54 + offset, data);
+  weekDays["saturday"] = getWeekDay(
     groupColumn,
     56 + offset,
     65 + offset,
     data
   );
+
+  timetable["weekDays"] = weekDays;
 
   return timetable;
 };

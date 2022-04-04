@@ -30,7 +30,7 @@ const corsOptionsDelegate = (req, callback) => {
 
 app.use(cors(corsOptionsDelegate));
 app.use(bodyParser.json());
-app.use("/parser", mainRouter);
+app.use("/", mainRouter);
 
 app.listen(PORT, () => {
   console.log(`Server started at ${URL}:${PORT}`);

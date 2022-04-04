@@ -66,20 +66,21 @@ const getDay = (startRow, endRow, data) => {
   const highWeek = getWeekTypeDay(startRow, endRow, 4, 5, 6, data);
   const lowWeek = getWeekTypeDay(startRow, endRow, 9, 8, 7, data);
 
-  return { highWeek, lowWeek };
+  return { high: highWeek, low: lowWeek };
 };
 
-const getTimes = (data) => {
-  const times = [];
+const getClassTimes = (data) => {
+  const classTimes = [];
 
   for (let i = 13; i < 18; i++) {
+    const number = i - 12;
     const time = data[i][2].split("-");
-    const timeFrom = time[0];
-    const timeTo = time[1];
-    times.push({ timeFrom, timeTo });
+    const startTime = time[0];
+    const endTime = time[1];
+    classTimes.push({ number, startTime, endTime });
   }
 
-  return times;
+  return classTimes;
 };
 
 module.exports.run = (wb, group) => {
@@ -96,14 +97,17 @@ module.exports.run = (wb, group) => {
 
   const timetable = {};
 
-  timetable["times"] = getTimes(data);
+  timetable["classTimes"] = getClassTimes(data);
 
-  timetable["monday"] = getDay(13, 17, data);
-  timetable["tuesday"] = getDay(19, 23, data);
-  timetable["wednesday"] = getDay(25, 29, data);
-  timetable["thursday"] = getDay(31, 35, data);
-  timetable["friday"] = getDay(37, 41, data);
-  timetable["saturday"] = getDay(43, 47, data);
+  const weekDays = {};
+  weekDays["monday"] = getDay(13, 17, data);
+  weekDays["tuesday"] = getDay(19, 23, data);
+  weekDays["wednesday"] = getDay(25, 29, data);
+  weekDays["thursday"] = getDay(31, 35, data);
+  weekDays["friday"] = getDay(37, 41, data);
+  weekDays["saturday"] = getDay(43, 47, data);
+
+  timetable["weekDays"] = weekDays;
 
   return timetable;
 };
