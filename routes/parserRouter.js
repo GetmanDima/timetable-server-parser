@@ -12,6 +12,7 @@ const router = express.Router();
 router.post(
   "/mtuci",
   body("url").isString().notEmpty(),
+  body("name").isString().notEmpty(),
   checkValidationErrors,
   isAuthenticated,
   isUserLeader,

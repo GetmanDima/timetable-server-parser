@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.belongsTo(models.Group, {foreignKey: 'groupId'})
+      this.belongsTo(models.Timetable, {foreignKey: "timetableId"})
       this.hasMany(models.TimetableDay, {foreignKey: "classTimeId"})
     }
   }
@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
     number: DataTypes.INTEGER,
     startTime: DataTypes.TIME,
     endTime: DataTypes.TIME,
-    groupId: DataTypes.INTEGER
+    timetableId: DataTypes.INTEGER
   }, {
     sequelize,
     modelName: 'ClassTime',

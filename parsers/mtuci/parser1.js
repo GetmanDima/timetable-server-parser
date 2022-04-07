@@ -22,7 +22,7 @@ const getGroupSheetName = (group, wb) => {
 const getWeekTypeDay = (
   startRow,
   endRow,
-  subjectTypeColumn,
+  classTypeColumn,
   teacherColumn,
   subjectColumn,
   data
@@ -30,18 +30,18 @@ const getWeekTypeDay = (
   const day = [];
 
   for (let i = startRow; i <= endRow; i++) {
-    const subjectType = data[i][subjectTypeColumn];
+    const classType = data[i][classTypeColumn];
     let teacher = data[i][teacherColumn];
     const subject = data[i][subjectColumn];
 
     if (subject) {
-      let aud;
-      let audStartIndex = subject.indexOf("Ауд.");
+      let room;
+      let roomStartIndex = subject.indexOf("Ауд.");
 
-      if (audStartIndex === -1) {
-        aud = subject.split(" ").slice(-1)[0];
+      if (roomStartIndex === -1) {
+        room = subject.split(" ").slice(-1)[0];
       } else {
-        aud = subject.slice(audStartIndex).split(" ").slice(-1)[0];
+        room = subject.slice(roomStartIndex).split(" ").slice(-1)[0];
       }
 
       if (teacher) {
@@ -49,8 +49,8 @@ const getWeekTypeDay = (
       }
 
       day.push({
-        aud: aud.trim().replace("\n/", ""),
-        subjectType: subjectType.trim().replace("\n/", ""),
+        room: room.trim().replace("\n/", ""),
+        classType: classType.trim().replace("\n/", ""),
         subject: subject.split("\n")[0].trim().replace("\n/", ""),
         teacher: teacher || "",
       });

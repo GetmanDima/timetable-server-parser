@@ -10,13 +10,14 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.belongsTo(models.Group, {foreignKey: 'groupId'})
+      this.belongsTo(models.Right, {foreignKey: 'rightId'})
       this.hasMany(models.TimetableDay, {foreignKey: "timetableId"})
     }
   }
   Timetable.init({
     name: DataTypes.STRING,
-    groupId: DataTypes.INTEGER
+    creationType: DataTypes.STRING,
+    rightId: DataTypes.INTEGER
   }, {
     sequelize,
     modelName: 'Timetable',

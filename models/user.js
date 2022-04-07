@@ -12,6 +12,8 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       this.belongsTo(models.Group, {foreignKey: "groupId"})
+      this.belongsTo(models.University, {foreignKey: "universityId"})
+      this.belongsToMany(models.Role, {through: models.User_Role, foreignKey: "userId"})
     }
   }
 
@@ -21,7 +23,8 @@ module.exports = (sequelize, DataTypes) => {
     email: DataTypes.STRING,
     password: DataTypes.STRING,
     type: DataTypes.STRING,
-    groupId: DataTypes.INTEGER
+    groupId: DataTypes.INTEGER,
+    universityId: DataTypes.INTEGER
   }, {
     sequelize,
   });

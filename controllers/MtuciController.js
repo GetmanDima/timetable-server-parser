@@ -1,145 +1,112 @@
 const XLSX = require("xlsx");
 const db = require("../models");
+const timetable = require("../models/timetable");
 const parser1 = require("../parsers/mtuci/parser1");
 const parser2 = require("../parsers/mtuci/parser2");
+const ParserServer = require("../ParserServer");
 
 class MtuciController {
-  static async createTimetable(groupId) {
-    return await db.Timetable.create({
-      name: "Main",
-      groupId: groupId,
-    });
-  }
-
-  static async createClassTimes(classTimes, groupId) {
-    return await db.ClassTime.bulkCreate(
-      classTimes.map((time) => {
-        return {
-          ...time,
-          groupId: groupId,
-        };
-      })
-    );
-  }
-
-  static async getOrCreateSubject(name) {
-    let subject = await db.Subject.findOne({
+  static async getOrCreateUniversity(name) {
+    let university = await db.University.findOne({
       where: { name },
     });
 
-    if (!subject) {
-      subject = await db.Subject.create({
-        name,
-      });
+    if (university) {
+      return university;
     }
 
-    return subject;
+    const right = await db.Right.create();
+    const role = await db.Role.findOne({ name: "all" });
+
+    if (!role) {
+      return res.sendStatus(500);
+    }
+
+    return await db.sequelize.transaction(async (t) => {
+      await db.Role_Right.create(
+        { rightId: right.id, roleId: role.id },
+        { transaction: t }
+      );
+      return await db.University.create(
+        {
+          name: "МТУСИ",
+          rightId: right.id,
+        },
+        { transaction: t }
+      );
+    });
   }
 
-  static async getOrCreateTeacher(name) {
-    let teacher = await db.Teacher.findOne({
-      where: { name },
+  static async getOrCreateGroup(university, name) {
+    let group = await db.Group.findOne({
+      where: {
+        name,
+        creationType: "parsed",
+        universityId: university.id,
+      },
     });
 
-    if (!teacher) {
-      teacher = await db.Teacher.create({
-        name,
-      });
+    if (group) {
+      return group;
     }
 
-    return teacher;
-  }
+    const right = await db.Right.create({});
+    const role = await db.Role.findOne({ name: "all" });
 
-  static async createWeekTypeDays(
-    weekDaysData,
-    weekDay,
-    weekType,
-    classTimes,
-    timetableId
-  ) {
-    const weekTypeDayData = weekDaysData[weekDay][weekType];
-
-    for (let i = 0; i < weekTypeDayData.length; i++) {
-      const timetableDayData = {
-        weekDay,
-        format: weekTypeDayData[i].format || "очно",
-        subjectType: weekTypeDayData[i].subjectType,
-        weekType: weekType,
-        classTimeId: classTimes[i].id,
-        timetableId: timetableId,
-      };
-
-      if (weekTypeDayData[i].subject) {
-        let subject = await MtuciController.getOrCreateSubject(
-          weekTypeDayData[i].subject
-        );
-
-        timetableDayData.subjectId = subject.id;
-      }
-
-      if (weekTypeDayData[i].teacher) {
-        let teacher = await MtuciController.getOrCreateTeacher(
-          weekTypeDayData[i].teacher
-        );
-
-        timetableDayData.teacherId = teacher.id;
-      }
-
-      await db.TimetableDay.create(timetableDayData);
-    }
-  }
-
-  static createTimetableDays(weekDaysData, classTimes, timetableId) {
-    for (const weekDay in weekDaysData) {
-      for (const weekType in weekDaysData[weekDay]) {
-        MtuciController.createWeekTypeDays(
-          weekDaysData,
-          weekDay,
-          weekType,
-          classTimes,
-          timetableId
-        );
-      }
-    }
+    return await db.sequelize.transaction(async (t) => {
+      await db.Role_Right.create(
+        { rightId: right.id, roleId: role.id },
+        { transaction: t }
+      );
+      return await db.Group.create(
+        {
+          name,
+          universityId: university.id,
+          rightId: right.id,
+        },
+        { transaction: t }
+      );
+    });
   }
 
   static async parse(req, res) {
-    const groupId = req.user.Group.id;
-    const groupName = req.user.Group.name;
-    const dest = req.dest;
+    const groupName = req.body.name;
+    const filePath = req.filePath;
 
-    //try {
-    const wb = XLSX.readFile(dest);
-    const ws = wb.SheetNames[0];
-    const sheet = wb.Sheets[ws];
+    try {
+      const wb = XLSX.readFile(filePath);
+      const ws = wb.SheetNames[0];
+      const sheet = wb.Sheets[ws];
 
-    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-    let parsedData;
+      let parsedTimetableData;
 
-    if (data[1][0] && data[1][0].toLowerCase() === "пн") {
-      parsedData = parser2.run(wb, groupName);
-    } else if (data[3][0] && data[3][0].toLowerCase() === "пн") {
-      parsedData = parser2.run(wb, groupName, 2);
-    } else {
-      parsedData = parser1.run(wb, groupName);
+      if (data[1][0] && data[1][0].toLowerCase() === "пн") {
+        parsedTimetableData = parser2.run(wb, groupName);
+      } else if (data[3][0] && data[3][0].toLowerCase() === "пн") {
+        parsedTimetableData = parser2.run(wb, groupName, 2);
+      } else {
+        parsedTimetableData = parser1.run(wb, groupName);
+      }
+
+      if (Object.keys(parsedTimetableData).length == 0) {
+        return res.sendStatus(500);
+      }
+
+      const university = await MtuciController.getOrCreateUniversity("МТУСИ");
+      const group = await MtuciController.getOrCreateGroup(
+        university,
+        groupName
+      );
+
+      const parserServer = new ParserServer(university, group);
+      parserServer.run(parsedTimetableData);
+
+      return res.json(parsedTimetableData);
+    } catch (_) {
+      res.sendStatus(500);
     }
-
-    const timetable = await MtuciController.createTimetable(groupId);
-
-    const classTimes = await MtuciController.createClassTimes(
-      parsedData.classTimes,
-      groupId
-    );
-
-    const weekDaysData = parsedData.weekDays;
-
-    MtuciController.createTimetableDays(weekDaysData, classTimes, timetable.id);
-
-    res.json(parsedData);
-    // } catch (_) {
-    //   res.sendStatus(500);
-    // }
   }
 }
 

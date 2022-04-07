@@ -43,50 +43,50 @@ const removeUnnecessaryChars = (str) => {
   return str.trim().replace("\n/", "");
 };
 
-const getSubjectType = (str) => {
-  const subjectTypes = ["пр", "лек", "лаб"];
+const getclassType = (str) => {
+  const classTypes = ["пр", "лек", "лаб"];
 
-  let subjectType = "";
+  let classType = "";
 
-  for (let i = 0; i < subjectTypes.length; i++) {
-    if (str.toLowerCase().indexOf(subjectTypes[i]) !== -1) {
-      subjectType = subjectTypes[i];
+  for (let i = 0; i < classTypes.length; i++) {
+    if (str.toLowerCase().indexOf(classTypes[i]) !== -1) {
+      classType = classTypes[i];
       break;
     }
   }
 
-  return subjectType;
+  return classType;
 };
 
 const getTeacher = (str) => {
-  const subjectTypes = ["пр", "лек", "лаб"];
+  const classTypes = ["пр", "лек", "лаб"];
   let teacher = "";
 
   if (str.trim().split(" ").length > 1) {
     teacher = removeUnnecessaryChars(
-      str.replace(new RegExp(subjectTypes.join("|"), "i"), "")
+      str.replace(new RegExp(classTypes.join("|"), "i"), "")
     );
   }
 
   return teacher;
 };
 
-const getAud = (str) => {
-  let aud = "";
-  let audStartIndex = str.indexOf("Ауд.");
+const getRoom = (str) => {
+  let room = "";
+  let roomStartIndex = str.indexOf("Ауд.");
 
-  if (audStartIndex === -1) {
-    audStartIndex =
+  if (roomStartIndex === -1) {
+    roomStartIndex =
       str.indexOf("А-") === -1 ? str.indexOf("Л-") : str.indexOf("А-");
-    aud =
-      audStartIndex === -1 ? "" : str.slice(audStartIndex + 2).split("\n")[0];
+    room =
+      roomStartIndex === -1 ? "" : str.slice(roomStartIndex + 2).split("\n")[0];
   } else {
-    aud = str.slice(audStartIndex + 4).split("\n")[0];
+    room = str.slice(roomStartIndex + 4).split("\n")[0];
   }
 
-  aud = removeUnnecessaryChars(aud);
+  room = removeUnnecessaryChars(room);
 
-  return aud;
+  return room;
 };
 
 const getWeekDay = (groupColumn, startRow, endRow, data) => {
@@ -97,26 +97,26 @@ const getWeekDay = (groupColumn, startRow, endRow, data) => {
 
   for (let i = startRow; i <= endRow; i++) {
     const value = data[i][groupColumn];
-    let classTime = {};
+    let universityClass = {};
 
     if (value) {
       const subject = removeUnnecessaryChars(value.split("\n")[0]);
-      const subjectType = getSubjectType(value.split("\n")[1]);
+      const classType = getclassType(value.split("\n")[1]);
       const teacher = getTeacher(value.split("\n")[1]);
-      const aud = getAud(value);
+      const room = getRoom(value);
 
-      classTime = {
-        aud,
-        subjectType,
+      universityClass = {
+        room,
+        classType,
         subject,
         teacher,
       };
     }
 
     if (i % 2 === startRow % 2) {
-      day["high"].push(classTime);
+      day["high"].push(universityClass);
     } else {
-      day["low"].push(classTime);
+      day["low"].push(universityClass);
     }
   }
 
