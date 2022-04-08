@@ -14,9 +14,6 @@ router.post(
   body("url").isString().notEmpty(),
   body("name").isString().notEmpty(),
   checkValidationErrors,
-  isAuthenticated,
-  isUserLeader,
-  userBelongsToGroup(true),
   downloadFileByUrl,
   MtuciController.parse
 );
