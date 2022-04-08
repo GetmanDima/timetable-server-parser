@@ -16,10 +16,23 @@ class ParserServer {
     if (timetable) {
       this.timetable = timetable;
     } else {
-      this.timetable = await db.Timetable.create({
-        name: "Parsed",
-        creationType: "parsed",
-        groupId: groupId,
+      const right = await db.Right.create({});
+      const role = await db.Role.findOne({ name: "all" });
+
+      this.timetable = await db.sequelize.transaction(async (t) => {
+        await db.Role_Right.create(
+          { rightId: right.id, roleId: role.id, action: "r" },
+          { transaction: t }
+        );
+        return await db.Timetable.create(
+          {
+            name: "Parsed",
+            creationType: "parsed",
+            groupId: this.group.id,
+            rightId: right.id,
+          },
+          { transaction: t }
+        );
       });
     }
   }
@@ -103,6 +116,12 @@ class ParserServer {
     }
   }
 
+  async deleteClassTimes() {
+    await db.ClassTime.destroy({
+      where: { timetableId: this.timetable.id },
+    });
+  }
+
   async deleteTimetableDays() {
     await db.TimetableDay.destroy({
       where: { timetableId: this.timetable.id },
@@ -110,12 +129,17 @@ class ParserServer {
   }
 
   async run(parsedTimetableData) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await this.getOrCreateTimetable();
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await this.deleteTimetableDays();
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await this.deleteClassTimes();
     await this.getOrCreateClassTimes(parsedTimetableData.classTimes);
 
     const weekDaysData = parsedTimetableData.weekDays;
 
-    await this.deleteTimetableDays();
+    await new Promise((resolve) => setTimeout(resolve, 10000));
     await this.createTimetableDays(weekDaysData);
   }
 }
