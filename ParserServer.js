@@ -11,7 +11,9 @@ class ParserServer {
   }
 
   async getOrCreateTimetable() {
-    const timetable = await db.Timetable.findOne({ groupId: this.group.id });
+    const timetable = await db.Timetable.findOne({
+      where: { groupId: this.group.id },
+    });
 
     if (timetable) {
       this.timetable = timetable;
@@ -26,7 +28,7 @@ class ParserServer {
         );
         return await db.Timetable.create(
           {
-            name: "Parsed",
+            name: `Parsed ${this.group.name}`,
             creationType: "parsed",
             groupId: this.group.id,
             rightId: right.id,
@@ -133,13 +135,13 @@ class ParserServer {
     await this.getOrCreateTimetable();
     await new Promise((resolve) => setTimeout(resolve, 5000));
     await this.deleteTimetableDays();
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await this.deleteClassTimes();
     await this.getOrCreateClassTimes(parsedTimetableData.classTimes);
 
     const weekDaysData = parsedTimetableData.weekDays;
 
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await this.createTimetableDays(weekDaysData);
   }
 }

@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const XLSX = require("xlsx");
 const db = require("../models");
 const timetable = require("../models/timetable");
@@ -51,9 +52,11 @@ class MtuciController {
   static async getOrCreateGroup(university, name) {
     let group = await db.Group.findOne({
       where: {
-        name,
-        creationType: "parsed",
-        universityId: university.id,
+        [Op.and]: {
+          name,
+          creationType: "parsed",
+          universityId: university.id,
+        },
       },
     });
 
