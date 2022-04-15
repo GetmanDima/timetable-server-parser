@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       this.belongsTo(models.Right, { foreignKey: "rightId" });
       this.belongsTo(models.Group, { foreignKey: "groupId" });
-      this.hasMany(models.TimetableDay, { foreignKey: "timetableId" });
+      this.hasMany(models.TimetableLesson, { foreignKey: "timetableId" });
     }
   }
   Timetable.init(

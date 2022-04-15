@@ -149,30 +149,45 @@ module.exports.run = (wb, group, offset = 0) => {
 
   timetable["classTimes"] = getClassTimes(2, data, offset);
 
-  const weekDays = {};
-  weekDays["monday"] = getWeekDay(groupColumn, 1 + offset, 10 + offset, data);
-  weekDays["tuesday"] = getWeekDay(groupColumn, 12 + offset, 21 + offset, data);
-  weekDays["wednesday"] = getWeekDay(
+  const weekDaysWithLessons = {};
+  weekDaysWithLessons["monday"] = getWeekDay(
+    groupColumn,
+    1 + offset,
+    10 + offset,
+    data
+  );
+  weekDaysWithLessons["tuesday"] = getWeekDay(
+    groupColumn,
+    12 + offset,
+    21 + offset,
+    data
+  );
+  weekDaysWithLessons["wednesday"] = getWeekDay(
     groupColumn,
     23 + offset,
     32 + offset,
     data
   );
-  weekDays["thursday"] = getWeekDay(
+  weekDaysWithLessons["thursday"] = getWeekDay(
     groupColumn,
     34 + offset,
     43 + offset,
     data
   );
-  weekDays["friday"] = getWeekDay(groupColumn, 45 + offset, 54 + offset, data);
-  weekDays["saturday"] = getWeekDay(
+  weekDaysWithLessons["friday"] = getWeekDay(
+    groupColumn,
+    45 + offset,
+    54 + offset,
+    data
+  );
+  weekDaysWithLessons["saturday"] = getWeekDay(
     groupColumn,
     56 + offset,
     65 + offset,
     data
   );
 
-  timetable["weekDays"] = weekDays;
+  timetable["weekDaysWithLessons"] = weekDaysWithLessons;
 
   return timetable;
 };

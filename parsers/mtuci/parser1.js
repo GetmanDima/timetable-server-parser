@@ -99,15 +99,15 @@ module.exports.run = (wb, group) => {
 
   timetable["classTimes"] = getClassTimes(data);
 
-  const weekDays = {};
-  weekDays["monday"] = getDay(13, 17, data);
-  weekDays["tuesday"] = getDay(19, 23, data);
-  weekDays["wednesday"] = getDay(25, 29, data);
-  weekDays["thursday"] = getDay(31, 35, data);
-  weekDays["friday"] = getDay(37, 41, data);
-  weekDays["saturday"] = getDay(43, 47, data);
+  const weekDaysWithLessons = {};
+  weekDaysWithLessons["monday"] = getDay(13, 17, data);
+  weekDaysWithLessons["tuesday"] = getDay(19, 23, data);
+  weekDaysWithLessons["wednesday"] = getDay(25, 29, data);
+  weekDaysWithLessons["thursday"] = getDay(31, 35, data);
+  weekDaysWithLessons["friday"] = getDay(37, 41, data);
+  weekDaysWithLessons["saturday"] = getDay(43, 47, data);
 
-  timetable["weekDays"] = weekDays;
+  timetable["weekDaysWithLessons"] = weekDaysWithLessons;
 
   return timetable;
 };

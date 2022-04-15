@@ -10,7 +10,22 @@ class ParserServer {
     this.group = group;
   }
 
-  async getOrCreateTimetable() {
+  async run(parsedTimetableData) {
+    //await new Promise((resolve) => setTimeout(resolve, 5000));
+    await this._getOrCreateTimetable();
+    //await new Promise((resolve) => setTimeout(resolve, 5000));
+    await this._deleteLessons();
+    //await new Promise((resolve) => setTimeout(resolve, 5000));
+    await this._deleteClassTimes();
+    await this._getOrCreateClassTimes(parsedTimetableData.classTimes);
+
+    const weekDaysWithLessons = parsedTimetableData.weekDaysWithLessons;
+
+    //await new Promise((resolve) => setTimeout(resolve, 5000));
+    await this._createLessons(weekDaysWithLessons);
+  }
+
+  async _getOrCreateTimetable() {
     const timetable = await db.Timetable.findOne({
       where: { groupId: this.group.id },
     });
@@ -39,7 +54,19 @@ class ParserServer {
     }
   }
 
-  async getOrCreateClassTimes(classTimes) {
+  async _deleteLessons() {
+    await db.TimetableLesson.destroy({
+      where: { timetableId: this.timetable.id },
+    });
+  }
+
+  async _deleteClassTimes() {
+    await db.ClassTime.destroy({
+      where: { timetableId: this.timetable.id },
+    });
+  }
+
+  async _getOrCreateClassTimes(classTimes) {
     this.classTimes = await db.ClassTime.bulkCreate(
       classTimes.map((time) => {
         return {
@@ -50,7 +77,49 @@ class ParserServer {
     );
   }
 
-  async getOrCreateSubject(name) {
+  async _createLessons(weekDaysWithLessons) {
+    for (const weekDay in weekDaysWithLessons) {
+      for (const weekType in weekDaysWithLessons[weekDay]) {
+        this._createWeekTypeLessons(weekDaysWithLessons, weekDay, weekType);
+      }
+    }
+  }
+
+  async _createWeekTypeLessons(weekDaysWithLessons, weekDay, weekType) {
+    const weekTypeLessons = weekDaysWithLessons[weekDay][weekType];
+
+    for (let i = 0; i < weekTypeLessons.length; i++) {
+      const lesson = {
+        weekDay,
+        room: weekTypeLessons[i].room,
+        weekType: weekType,
+        format: weekTypeLessons[i].format || "очно",
+        classType: weekTypeLessons[i].classType,
+        classTimeId: this.classTimes[i].id,
+        timetableId: this.timetable.id,
+      };
+
+      if (weekTypeLessons[i].subject) {
+        let subject = await this._getOrCreateSubject(
+          weekTypeLessons[i].subject
+        );
+
+        lesson.subjectId = subject.id;
+      }
+
+      if (weekTypeLessons[i].teacher) {
+        let teacher = await this._getOrCreateTeacher(
+          weekTypeLessons[i].teacher
+        );
+
+        lesson.teacherId = teacher.id;
+      }
+
+      await db.TimetableLesson.create(lesson);
+    }
+  }
+
+  async _getOrCreateSubject(name) {
     let subject = await db.Subject.findOne({
       where: { name, timetableId: this.timetable.id },
     });
@@ -65,7 +134,7 @@ class ParserServer {
     return subject;
   }
 
-  async getOrCreateTeacher(name) {
+  async _getOrCreateTeacher(name) {
     let teacher = await db.Teacher.findOne({
       where: { name, timetableId: this.timetable.id },
     });
@@ -78,71 +147,6 @@ class ParserServer {
     }
 
     return teacher;
-  }
-
-  async createWeekTypeDays(weekDaysData, weekDay, weekType) {
-    const weekTypeDayData = weekDaysData[weekDay][weekType];
-
-    for (let i = 0; i < weekTypeDayData.length; i++) {
-      const timetableDayData = {
-        weekDay,
-        room: weekTypeDayData[i].room,
-        weekType: weekType,
-        format: weekTypeDayData[i].format || "очно",
-        classType: weekTypeDayData[i].classType,
-        classTimeId: this.classTimes[i].id,
-        timetableId: this.timetable.id,
-      };
-
-      if (weekTypeDayData[i].subject) {
-        let subject = await this.getOrCreateSubject(weekTypeDayData[i].subject);
-
-        timetableDayData.subjectId = subject.id;
-      }
-
-      if (weekTypeDayData[i].teacher) {
-        let teacher = await this.getOrCreateTeacher(weekTypeDayData[i].teacher);
-
-        timetableDayData.teacherId = teacher.id;
-      }
-
-      await db.TimetableDay.create(timetableDayData);
-    }
-  }
-
-  async createTimetableDays(weekDaysData) {
-    for (const weekDay in weekDaysData) {
-      for (const weekType in weekDaysData[weekDay]) {
-        this.createWeekTypeDays(weekDaysData, weekDay, weekType);
-      }
-    }
-  }
-
-  async deleteClassTimes() {
-    await db.ClassTime.destroy({
-      where: { timetableId: this.timetable.id },
-    });
-  }
-
-  async deleteTimetableDays() {
-    await db.TimetableDay.destroy({
-      where: { timetableId: this.timetable.id },
-    });
-  }
-
-  async run(parsedTimetableData) {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    await this.getOrCreateTimetable();
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    await this.deleteTimetableDays();
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    await this.deleteClassTimes();
-    await this.getOrCreateClassTimes(parsedTimetableData.classTimes);
-
-    const weekDaysData = parsedTimetableData.weekDays;
-
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    await this.createTimetableDays(weekDaysData);
   }
 }
 

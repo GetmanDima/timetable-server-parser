@@ -29,7 +29,9 @@ module.exports = async (req, res, next) => {
         }
       }
     }
+    
     const file = fs.createWriteStream(filePath);
+
     https
       .get(req.body.url, function (response) {
         response.pipe(file);
