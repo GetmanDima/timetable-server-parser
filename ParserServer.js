@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const db = require("./models");
 
 class ParserServer {
@@ -11,29 +12,35 @@ class ParserServer {
   }
 
   async run(parsedTimetableData) {
-    //await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await this._getOrCreateTimetable();
-    //await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await this._deleteLessons();
-    //await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await this._deleteClassTimes();
     await this._getOrCreateClassTimes(parsedTimetableData.classTimes);
 
     const weekDaysWithLessons = parsedTimetableData.weekDaysWithLessons;
 
-    //await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await this._createLessons(weekDaysWithLessons);
   }
 
   async _getOrCreateTimetable() {
     const timetable = await db.Timetable.findOne({
-      where: { groupId: this.group.id },
+      where: {
+        groupId: this.group.id,
+        rightId: {
+          [Op.in]: db.Sequelize.literal('(SELECT "rightId" FROM "ParsedData")'),
+        },
+      },
     });
 
     if (timetable) {
       this.timetable = timetable;
     } else {
       const right = await db.Right.create({});
+      await db.ParsedData.create({ rightId: right.id });
       const role = await db.Role.findOne({ name: "all" });
 
       this.timetable = await db.sequelize.transaction(async (t) => {

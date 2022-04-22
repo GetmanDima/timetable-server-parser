@@ -1,7 +1,6 @@
 const { Op } = require("sequelize");
 const XLSX = require("xlsx");
 const db = require("../models");
-const timetable = require("../models/timetable");
 const parser1 = require("../parsers/mtuci/parser1");
 const parser2 = require("../parsers/mtuci/parser2");
 const ParserServer = require("../ParserServer");
@@ -9,16 +8,23 @@ const ParserServer = require("../ParserServer");
 class MtuciController {
   static async getOrCreateUniversity(name) {
     let university = await db.University.findOne({
-      where: { name },
+      where: {
+        name,
+        rightId: {
+          [Op.in]: db.Sequelize.literal('(SELECT "rightId" FROM "ParsedData")'),
+        },
+      },
       include: {
         model: db.Right,
-        include: {
-          model: db.Role,
-          where: {
-            name: "all",
+        include: [
+          {
+            model: db.Role,
+            where: {
+              name: "all",
+            },
+            required: true,
           },
-          required: true,
-        },
+        ],
         required: true,
       },
     });
@@ -28,6 +34,7 @@ class MtuciController {
     }
 
     const right = await db.Right.create();
+    await db.ParsedData.create({ rightId: right.id });
     const role = await db.Role.findOne({ name: "all" });
 
     if (!role) {
@@ -54,8 +61,12 @@ class MtuciController {
       where: {
         [Op.and]: {
           name,
-          creationType: "parsed",
           universityId: university.id,
+          rightId: {
+            [Op.in]: db.Sequelize.literal(
+              '(SELECT "rightId" FROM "ParsedData")'
+            ),
+          },
         },
       },
     });
@@ -65,6 +76,7 @@ class MtuciController {
     }
 
     const right = await db.Right.create({});
+    await db.ParsedData.create({ rightId: right.id });
     const role = await db.Role.findOne({ name: "all" });
 
     return await db.sequelize.transaction(async (t) => {
