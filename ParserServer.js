@@ -5,6 +5,7 @@ class ParserServer {
   group = {};
   timetable = {};
   classTimes = [];
+  weekTypes = [];
 
   constructor(university, group) {
     this.university = university;
@@ -18,6 +19,8 @@ class ParserServer {
     await this._deleteLessons();
     await new Promise((resolve) => setTimeout(resolve, 5000));
     await this._deleteClassTimes();
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await this._deleteWeekTypes();
     await this._getOrCreateClassTimes(parsedTimetableData.classTimes);
 
     const weekDaysWithLessons = parsedTimetableData.weekDaysWithLessons;
@@ -73,6 +76,12 @@ class ParserServer {
     });
   }
 
+  async _deleteWeekTypes() {
+    await db.WeekType.destroy({
+      where: { timetableId: this.timetable.id },
+    });
+  }
+
   async _getOrCreateClassTimes(classTimes) {
     this.classTimes = await db.ClassTime.bulkCreate(
       classTimes.map((time) => {
@@ -82,48 +91,6 @@ class ParserServer {
         };
       })
     );
-  }
-
-  async _createLessons(weekDaysWithLessons) {
-    for (const weekDay in weekDaysWithLessons) {
-      for (const weekType in weekDaysWithLessons[weekDay]) {
-        this._createWeekTypeLessons(weekDaysWithLessons, weekDay, weekType);
-      }
-    }
-  }
-
-  async _createWeekTypeLessons(weekDaysWithLessons, weekDay, weekType) {
-    const weekTypeLessons = weekDaysWithLessons[weekDay][weekType];
-
-    for (let i = 0; i < weekTypeLessons.length; i++) {
-      const lesson = {
-        weekDay,
-        room: weekTypeLessons[i].room,
-        weekType: weekType,
-        format: weekTypeLessons[i].format || "очно",
-        classType: weekTypeLessons[i].classType,
-        classTimeId: this.classTimes[i].id,
-        timetableId: this.timetable.id,
-      };
-
-      if (weekTypeLessons[i].subject) {
-        let subject = await this._getOrCreateSubject(
-          weekTypeLessons[i].subject
-        );
-
-        lesson.subjectId = subject.id;
-      }
-
-      if (weekTypeLessons[i].teacher) {
-        let teacher = await this._getOrCreateTeacher(
-          weekTypeLessons[i].teacher
-        );
-
-        lesson.teacherId = teacher.id;
-      }
-
-      await db.TimetableLesson.create(lesson);
-    }
   }
 
   async _getOrCreateSubject(name) {
@@ -154,6 +121,64 @@ class ParserServer {
     }
 
     return teacher;
+  }
+
+  async _getOrCreateWeekType(name) {
+    let weekType = await db.WeekType.findOne({
+      where: { name, timetableId: this.timetable.id },
+    });
+
+    if (!weekType) {
+      weekType = await db.WeekType.create({
+        name,
+        timetableId: this.timetable.id,
+      });
+    }
+
+    return weekType;
+  }
+
+  async _createLessons(weekDaysWithLessons) {
+    for (const weekDay in weekDaysWithLessons) {
+      for (const weekTypeName in weekDaysWithLessons[weekDay]) {
+        const weekType = await this._getOrCreateWeekType(weekTypeName);
+        this._createWeekTypeLessons(weekDaysWithLessons, weekDay, weekType);
+      }
+    }
+  }
+
+  async _createWeekTypeLessons(weekDaysWithLessons, weekDay, weekType) {
+    const weekTypeLessons = weekDaysWithLessons[weekDay][weekType.name];
+
+    for (let i = 0; i < weekTypeLessons.length; i++) {
+      const lesson = {
+        weekDay,
+        room: weekTypeLessons[i].room,
+        format: weekTypeLessons[i].format || "очно",
+        classType: weekTypeLessons[i].classType,
+        weekTypeId: weekType.id,
+        classTimeId: this.classTimes[i].id,
+        timetableId: this.timetable.id,
+      };
+
+      if (weekTypeLessons[i].subject) {
+        let subject = await this._getOrCreateSubject(
+          weekTypeLessons[i].subject
+        );
+
+        lesson.subjectId = subject.id;
+      }
+
+      if (weekTypeLessons[i].teacher) {
+        let teacher = await this._getOrCreateTeacher(
+          weekTypeLessons[i].teacher
+        );
+
+        lesson.teacherId = teacher.id;
+      }
+
+      await db.TimetableLesson.create(lesson);
+    }
   }
 }
 
