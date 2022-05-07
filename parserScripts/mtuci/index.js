@@ -193,7 +193,11 @@ const runParserForGroups = (groups, runParser, iteration) => {
 };
 
 const removeParsedData = async () => {
-  const files = fs.readdirSync(timetableParsedPath, "utf8");
+  const files = fs
+    .readdirSync(timetableParsedPath, "utf8")
+    .filter((fileName) => {
+      return fileName.endsWith(".json");
+    });
 
   for (let i = 0; i < files.length; i++) {
     fs.unlink(`${timetableParsedPath}/${files[i]}`, (err) => {
