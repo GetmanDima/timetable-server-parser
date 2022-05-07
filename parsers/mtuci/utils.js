@@ -10,3 +10,13 @@ module.exports.translateGroupString = (groupString) => {
     })
     .join("");
 };
+
+module.exports.removeUnnecessaryChars = (str) => {
+  return str
+    .trim()
+    .replace(/\n/g, "")
+    .replace(/\r/g, "")
+    .replace(/\r\n/g, "")
+    .replace(/\\/g, "")
+    .replace(/\//g, "");
+};

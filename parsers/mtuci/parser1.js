@@ -1,97 +1,12 @@
 const XLSX = require("xlsx");
-const translateGroupString = require("./common").translateGroupString;
+const { translateGroupString, removeUnnecessaryChars } = require("./utils");
 
-const getGroupSheetName = (group, wb) => {
-  const sheetNames = wb.SheetNames;
+module.exports.run = (wb, groupName) => {
+  const sheet = wb.Sheets[getGroupSheetName(groupName, wb)];
 
-  for (let i = 0; i <= sheetNames.length; i++) {
-    const sheetName = sheetNames[i];
-
-    if (sheetName) {
-      const ruSheetName = translateGroupString(sheetName);
-
-      if (ruSheetName.indexOf(group) !== -1) {
-        return group;
-      }
-    }
+  if (!sheet) {
+    return null;
   }
-
-  return "";
-};
-
-const getWeekTypeDay = (
-  startRow,
-  endRow,
-  classTypeColumn,
-  teacherColumn,
-  subjectColumn,
-  data
-) => {
-  const day = [];
-
-  for (let i = startRow; i <= endRow; i++) {
-    const classType = data[i][classTypeColumn];
-    let teacher = data[i][teacherColumn];
-    const subject = data[i][subjectColumn];
-
-    if (subject) {
-      let room;
-      let roomStartIndex = subject.indexOf("Ауд.");
-
-      if (roomStartIndex === -1) {
-        room = subject.split(" ").slice(-1)[0];
-      } else {
-        room = subject.slice(roomStartIndex).split(" ").slice(-1)[0];
-      }
-
-      if (teacher) {
-        teacher = teacher.trim().replace("\n/", "");
-      }
-
-      day.push({
-        room: room.trim().replace("\n/", ""),
-        classType: classType.trim().replace("\n/", ""),
-        subject: subject.split("\n")[0].trim().replace("\n/", ""),
-        teacher: teacher || "",
-      });
-    } else {
-      day.push({});
-    }
-  }
-
-  return day;
-};
-
-const getDay = (startRow, endRow, data) => {
-  const highWeek = getWeekTypeDay(startRow, endRow, 4, 5, 6, data);
-  const lowWeek = getWeekTypeDay(startRow, endRow, 9, 8, 7, data);
-
-  return { high: highWeek, low: lowWeek };
-};
-
-const getClassTimes = (data) => {
-  const classTimes = [];
-
-  for (let i = 13; i < 18; i++) {
-    const number = i - 12;
-    const time = data[i][2].split("-");
-    const startTime = time[0];
-    const endTime = time[1];
-    classTimes.push({ number, startTime, endTime });
-  }
-
-  return classTimes;
-};
-
-module.exports.run = (wb, group) => {
-  const ws = getGroupSheetName(group, wb);
-
-  if (ws === "") {
-    console.log("group not found");
-    return {};
-  }
-
-  const sheet = wb.Sheets[ws];
 
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
@@ -110,4 +25,167 @@ module.exports.run = (wb, group) => {
   timetable["weekDaysWithLessons"] = weekDaysWithLessons;
 
   return timetable;
+};
+
+module.exports.findGroups = (wb) => {
+  const groups = [];
+  const sheetNames = wb.SheetNames;
+
+  for (let i = 0; i <= sheetNames.length; i++) {
+    const sheetName = sheetNames[i];
+
+    if (sheetName) {
+      const ruSheetName = translateGroupString(sheetName);
+
+      groups.push(ruSheetName);
+    }
+  }
+
+  return groups;
+};
+
+const getGroupSheetName = (groupName, wb) => {
+  const sheetNames = wb.SheetNames;
+
+  for (let i = 0; i <= sheetNames.length; i++) {
+    const sheetName = sheetNames[i];
+
+    if (sheetName) {
+      const ruSheetName = translateGroupString(sheetName);
+
+      if (ruSheetName.indexOf(groupName) !== -1) {
+        return sheetName;
+      }
+    }
+  }
+
+  return "";
+};
+
+const getRoom = (str) => {
+  let room = "";
+  let roomStartIndex = str.toLowerCase().indexOf("ауд.");
+
+  if (roomStartIndex === -1) {
+    roomStartIndex =
+      str.indexOf("А-") === -1 ? str.indexOf("Л-") : str.indexOf("А-");
+
+    if (roomStartIndex !== -1) {
+      room = str.slice(roomStartIndex).trim().split(" ")[0];
+    }
+  } else {
+    room = str
+      .slice(roomStartIndex + 4)
+      .trim()
+      .split(" ")[0]
+      .split("\r")[0]
+      .split("\n")[0]
+      .trim();
+  }
+
+  room = removeUnnecessaryChars(room);
+
+  return room;
+};
+
+const getSubject = (str) => {
+  let subject = removeUnnecessaryChars(str.split("\n")[0]);
+
+  const subjectEndIndexes = [
+    subject.toLowerCase().indexOf(" ауд."),
+    subject.toLowerCase().indexOf(" ("),
+    subject.toLowerCase().indexOf(" а-"),
+    subject.toLowerCase().indexOf(" л-"),
+  ];
+
+  subject = subjectEndIndexes
+    .filter((i) => i !== -1)
+    .reduce((str, i) => {
+      return str.slice(0, i + 1);
+    }, subject);
+
+  return removeUnnecessaryChars(subject).trim();
+};
+
+const getTeacher = (str) => {
+  return removeUnnecessaryChars(str);
+};
+
+const getClassType = (str) => {
+  return removeUnnecessaryChars(str);
+};
+
+const getWeekTypeDay = (
+  data,
+  startRow,
+  endRow,
+  classTypeColumn,
+  teacherColumn,
+  subjectColumn,
+  formatColumn
+) => {
+  const day = [];
+
+  for (let i = startRow; i <= endRow; i++) {
+    if (!data[i]) {
+      continue;
+    }
+
+    let classType = data[i][classTypeColumn];
+    let teacher = data[i][teacherColumn];
+    const subjectStr = data[i][subjectColumn];
+    const format = data[i][formatColumn] ? data[i][formatColumn] : "";
+
+    if (subjectStr) {
+      const room = getRoom(subjectStr);
+      const subject = getSubject(subjectStr);
+
+      if (teacher) {
+        teacher = getTeacher(teacher);
+      } else {
+        teacher = "";
+      }
+
+      if (classType) {
+        classType = getClassType(classType);
+      } else {
+        classType = "";
+      }
+
+      day.push({
+        room,
+        format,
+        classType,
+        subject,
+        teacher,
+      });
+    } else {
+      day.push({});
+    }
+  }
+
+  return day;
+};
+
+const getDay = (startRow, endRow, data) => {
+  const highWeek = getWeekTypeDay(data, startRow, endRow, 4, 5, 6, 3);
+  const lowWeek = getWeekTypeDay(data, startRow, endRow, 9, 8, 7, 10);
+
+  return { high: highWeek, low: lowWeek };
+};
+
+const getClassTimes = (data) => {
+  const classTimes = [];
+
+  for (let i = 13; i < 18; i++) {
+    if (data[i]) {
+      const number = i - 12;
+      const time = data[i][2].split("-");
+      const startTime = time[0];
+      const endTime = time[1];
+      classTimes.push({ number, startTime, endTime });
+    }
+  }
+
+  return classTimes;
 };
