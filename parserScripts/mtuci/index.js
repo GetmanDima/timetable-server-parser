@@ -2,6 +2,7 @@ const HTMLParser = require("node-html-parser");
 const https = require("https");
 const XLSX = require("xlsx");
 const fs = require("fs");
+const moment = require("moment");
 const { timeout, writeLog } = require("../../utils");
 const { getParser } = require("../../parsers/mtuci");
 const {
@@ -26,8 +27,27 @@ module.exports.run = async (start, end) => {
     output: process.stdout,
   });
 
+  const weekAnswer = await new Promise((resolve) => {
+    readline.question("High (1) or Low (2) week now? ", (answer) => {
+      resolve(answer);
+    });
+  });
+
+  let weekTypes;
+
+  if (weekAnswer === "1") {
+    console.log("High week");
+    weekTypes = getWeekTypes("high");
+  } else if (weekAnswer === "2") {
+    console.log("Low week");
+    weekTypes = getWeekTypes("low");
+  } else {
+    console.log("Incorrect week type number. Enter 1 or 2");
+    return;
+  }
+
   const createAnswer = await new Promise((resolve) => {
-    readline.question("Create parsed data? ", (answer) => {
+    readline.question("Create parsed data (y/n)? ", (answer) => {
       resolve(answer);
     });
   });
@@ -39,11 +59,11 @@ module.exports.run = async (start, end) => {
     console.log("Remove old");
     await removeParsedData();
     console.log("Create");
-    await createParsedData();
+    await createParsedData(weekTypes);
   }
 
   const serverAnswer = await new Promise((resolve) => {
-    readline.question("Send parsed data to server? ", (answer) => {
+    readline.question("Send parsed data to server (y/n)? ", (answer) => {
       resolve(answer);
     });
   });
@@ -55,6 +75,36 @@ module.exports.run = async (start, end) => {
     console.log("Run sending");
     await getParsedDataAndSendToDb(start, end);
   }
+};
+
+const getWeekTypes = (currentWeekName) => {
+  const highWeekPeriods = [];
+  const lowWeekPeriods = [];
+
+  for (let i = 1; i <= moment().weeksInYear(); i++) {
+    const from = moment()
+      .set({ week: i, year: moment().year(), day: 1 })
+      .format("YYYY-MM-DD");
+    const to = moment()
+      .set({ week: i, year: moment().year(), day: 7 })
+      .format("YYYY-MM-DD");
+
+    if (i % 2 === moment().week() % 2) {
+      if (currentWeekName === "high") {
+        highWeekPeriods.push({ from, to });
+      } else {
+        lowWeekPeriods.push({ from, to });
+      }
+    } else {
+      if (currentWeekName === "high") {
+        lowWeekPeriods.push({ from, to });
+      } else {
+        highWeekPeriods.push({ from, to });
+      }
+    }
+  }
+
+  return { high: highWeekPeriods, low: lowWeekPeriods };
 };
 
 const getParsedDataAndSendToDb = async (start, end) => {
@@ -167,7 +217,7 @@ const makePrettyGroupName = (groupName) => {
   return prettyGroupName;
 };
 
-const runParserForGroups = (groups, runParser, iteration) => {
+const runParserForGroups = (groups, runParser, weekTypes, iteration) => {
   groups.forEach((group) => {
     const parsedTimetableData = runParser(group);
     const prettyGroupName = makePrettyGroupName(group);
@@ -175,10 +225,13 @@ const runParserForGroups = (groups, runParser, iteration) => {
     const timetableWithGroup = {
       university: universityName,
       group: prettyGroupName,
-      timetable: parsedTimetableData,
+      timetable: {
+        ...parsedTimetableData,
+        weekTypes: weekTypes,
+      },
     };
 
-    fs.writeFile(
+    fs.writeFileSync(
       `${timetableParsedPath}/${iteration}_${group
         .replace(/\r\n/g, "")
         .replace(/\n/g, "")}.json`,
@@ -210,7 +263,7 @@ const removeParsedData = async () => {
   }
 };
 
-const createParsedData = async () => {
+const createParsedData = async (weekTypes) => {
   try {
     const html = await fetchData(timetableUrl);
     const links = getLinks(html);
@@ -252,7 +305,7 @@ const createParsedData = async () => {
         writeLog(warningFilePath, `${link} ${filePath} no parser for file`);
       } else {
         const groups = parser.findGroups();
-        runParserForGroups(groups, parser.run, i);
+        runParserForGroups(groups, parser.run, weekTypes, i);
       }
     } catch (e) {
       console.log(e);

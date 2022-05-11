@@ -12,15 +12,30 @@ module.exports.sendParsedDataToDb = async (parsedTimetableData, group) => {
     await deleteLessons(timetable);
     await deleteClassTimes(timetable);
     await deleteWeekTypes(timetable);
+    await deleteSubjects(timetable);
+    await deleteTeachers(timetable);
 
     const classTimes = await createClassTimes(
       parsedTimetableData.classTimes,
       timetable
     );
 
-    const weekDaysWithLessons = parsedTimetableData.weekDaysWithLessons;
+    const parsedWeekTypes = parsedTimetableData.weekTypes;
+    let weekTypesData = [];
 
-    await createLessons(weekDaysWithLessons, classTimes, timetable);
+    for (weekTypeName in parsedWeekTypes) {
+      const activePeriods = parsedWeekTypes[weekTypeName];
+      weekTypesData.push({ name: weekTypeName, activePeriods });
+    }
+
+    const weekTypes = await createWeekTypes(weekTypesData, timetable);
+
+    await createLessons(
+      parsedTimetableData.weekDaysWithLessons,
+      classTimes,
+      weekTypes,
+      timetable
+    );
   } catch (e) {
     console.log(e);
     return false;
@@ -172,11 +187,34 @@ const deleteWeekTypes = async (timetable) => {
   });
 };
 
+const deleteSubjects = async (timetable) => {
+  await db.Subject.destroy({
+    where: { timetableId: timetable.id },
+  });
+};
+
+const deleteTeachers = async (timetable) => {
+  await db.Teacher.destroy({
+    where: { timetableId: timetable.id },
+  });
+};
+
 const createClassTimes = async (classTimes, timetable) => {
   return await db.ClassTime.bulkCreate(
     classTimes.map((time) => {
       return {
         ...time,
+        timetableId: timetable.id,
+      };
+    })
+  );
+};
+
+const createWeekTypes = async (weekTypes, timetable) => {
+  return await db.WeekType.bulkCreate(
+    weekTypes.map((weekType) => {
+      return {
+        ...weekType,
         timetableId: timetable.id,
       };
     })
@@ -213,25 +251,17 @@ const getOrCreateTeacher = async (name, timetable) => {
   return teacher;
 };
 
-const getOrCreateWeekType = async (name, timetable) => {
-  let weekType = await db.WeekType.findOne({
-    where: { name, timetableId: timetable.id },
-  });
-
-  if (!weekType) {
-    weekType = await db.WeekType.create({
-      name,
-      timetableId: timetable.id,
-    });
-  }
-
-  return weekType;
-};
-
-const createLessons = async (weekDaysWithLessons, classTimes, timetable) => {
+const createLessons = async (
+  weekDaysWithLessons,
+  classTimes,
+  weekTypes,
+  timetable
+) => {
   for (const weekDay in weekDaysWithLessons) {
     for (const weekTypeName in weekDaysWithLessons[weekDay]) {
-      const weekType = await getOrCreateWeekType(weekTypeName, timetable);
+      const weekType = weekTypes.find(
+        (weekType) => weekType.name === weekTypeName
+      );
       await createWeekTypeLessons(
         weekDaysWithLessons,
         weekDay,
